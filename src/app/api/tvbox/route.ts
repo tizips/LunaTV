@@ -1,6 +1,7 @@
 import ipaddr from 'ipaddr.js';
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getSpiderJarFromBlob, uploadSpiderJarToBlob } from '@/lib/blobStorage';
 import { getConfig } from '@/lib/config';
 import { db } from '@/lib/db';
 import { getSpiderJar, getCandidates } from '@/lib/spiderJar';
@@ -16,6 +17,17 @@ function getBaseUrl(request: NextRequest): string {
   const host = request.headers.get('host') || 'localhost:3000';
   const protocol = request.headers.get('x-forwarded-proto') || 'http';
   return `${protocol}://${host}`;
+}
+
+// 检测是否为IP地址（用于spider.jar兼容性优化）
+function isIPAddress(host: string): boolean {
+  // 移除端口号
+  const hostWithoutPort = host.split(':')[0];
+  // IPv4 正则
+  const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
+  // IPv6 正则（简化版）
+  const ipv6Regex = /^[\da-fA-F:]+$/;
+  return ipv4Regex.test(hostWithoutPort) || ipv6Regex.test(hostWithoutPort);
 }
 
 // 生产环境使用Redis/Upstash/Kvrocks的频率限制
@@ -156,6 +168,7 @@ interface TVBoxConfig {
   spider_tried?: number; // 尝试次数
   spider_success?: boolean; // 是否成功获取远程 jar
   spider_candidates?: string[]; // 候选地址列表
+  spider_ip_access_warning?: string; // IP访问警告信息
 }
 
 export async function GET(request: NextRequest) {
@@ -751,21 +764,58 @@ export async function GET(request: NextRequest) {
     // 使用新的 Spider Jar 管理逻辑（下载真实 jar + 缓存）
     const jarInfo = await getSpiderJar(forceSpiderRefresh);
 
-    // 🔑 优化策略：始终通过本地代理提供 JAR，避免国内用户直连 GitHub 失败
-    // 服务器（Vercel）负责从 GitHub 拉取并缓存，用户只需访问本地代理端点
+    // 🔑 检测是否为IP地址访问（用于兼容性优化）
+    const host = request.headers.get('host') || 'localhost:3000';
+    const isIPAccess = isIPAddress(host);
+
+    // 🔑 混合策略：优先使用 Vercel Blob CDN，降级到本地代理
+    // Blob CDN: 全球加速，减轻服务器负载（仅 Vercel 部署可用）
+    // 本地代理: 兼容所有部署环境，确保 100% 可用
     let finalSpiderUrl = `${baseUrl}/api/proxy/spider.jar;md5;${jarInfo.md5}`;
 
+    // 尝试使用 Blob CDN（仅 Vercel 环境）
+    if (!globalSpiderJar) {
+      const blobJar = await getSpiderJarFromBlob();
+      if (blobJar) {
+        // Blob 存在，使用 CDN（优先使用CDN，即使是IP访问也可以用CDN）
+        finalSpiderUrl = `${blobJar.url};md5;${jarInfo.md5}`;
+        console.log(`[Spider] ✅ Using Blob CDN: ${blobJar.url}`);
+      } else {
+        // Blob 不存在，异步上传（不阻塞响应）
+        console.log(`[Spider] Blob CDN not available, using proxy`);
+        if (jarInfo.success && jarInfo.source !== 'fallback') {
+          uploadSpiderJarToBlob(jarInfo.buffer, jarInfo.md5, jarInfo.source).catch(
+            (err) => console.error('[Spider] Blob upload failed:', err)
+          );
+        }
+
+        // 🔑 IP地址访问优化：当检测到IP访问且无CDN时，尝试使用原始源URL
+        // 某些TVBox版本对IP地址的本地代理URL解析有问题
+        // 策略：如果jar来自可靠的远程源，直接使用远程源URL
+        if (isIPAccess && jarInfo.success && jarInfo.source !== 'fallback') {
+          // 使用原始远程源URL，避免IP地址解析问题
+          finalSpiderUrl = `${jarInfo.source};md5;${jarInfo.md5}`;
+          console.log(`[Spider] ⚠️ IP访问检测到，使用远程源URL以提高兼容性: ${jarInfo.source}`);
+        }
+      }
+    }
+
     // 🔑 处理用户自定义 jar（如果有）
-    // 策略：自定义 jar 也通过本地代理提供，避免国内用户直连失败
     if (globalSpiderJar) {
       const customJarUrl = globalSpiderJar.split(';')[0];
-      console.log(`[Spider] 检测到用户自定义 jar: ${customJarUrl}，将通过本地代理提供`);
-      // 通过代理端点，传递自定义URL参数
-      finalSpiderUrl = `${baseUrl}/api/proxy/spider.jar?url=${encodeURIComponent(customJarUrl)};md5;${jarInfo.md5}`;
-    } else if (jarInfo.success && jarInfo.source !== 'fallback') {
-      console.log(`[Spider] 服务器已从远程获取 jar: ${jarInfo.source}，通过本地代理提供给用户`);
-    } else {
-      console.warn(`[Spider] 使用 fallback jar，通过本地代理提供: ${finalSpiderUrl.split(';')[0]}`);
+      console.log(`[Spider] 自定义 jar: ${customJarUrl}，通过代理提供`);
+      // 自定义jar时，如果是IP访问，直接使用自定义URL而不是通过代理
+      if (isIPAccess) {
+        finalSpiderUrl = `${customJarUrl};md5;${jarInfo.md5}`;
+        console.log(`[Spider] ⚠️ IP访问 + 自定义jar，直接使用自定义URL`);
+      } else {
+        finalSpiderUrl = `${baseUrl}/api/proxy/spider.jar?url=${encodeURIComponent(customJarUrl)};md5;${jarInfo.md5}`;
+      }
+    }
+
+    // 🔑 添加IP访问警告到配置中（帮助用户诊断）
+    if (isIPAccess) {
+      tvboxConfig.spider_ip_access_warning = '检测到IP地址访问，已自动优化spider URL。如仍有问题，建议设置SITE_BASE环境变量为完整域名。';
     }
 
     // 设置 spider 字段和状态透明化字段
