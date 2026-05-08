@@ -223,7 +223,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
 
   // 同步 Query 结果到本地 state
   useEffect(() => {
-    if (!shouldShowBell && favoritedStatus !== undefined) {
+    if (!shouldShowBell && typeof favoritedStatus === 'boolean') {
       if (from === 'search') {
         setSearchFavorited(favoritedStatus);
       } else {
@@ -233,7 +233,7 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(function VideoCard
   }, [favoritedStatus, shouldShowBell, from]);
 
   useEffect(() => {
-    if (shouldShowBell && remindedStatus !== undefined) {
+    if (shouldShowBell && typeof remindedStatus === 'boolean') {
       setReminded(remindedStatus);
     }
   }, [remindedStatus, shouldShowBell]);

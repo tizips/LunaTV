@@ -134,12 +134,24 @@ export function useIsRemindedQuery(
   options?: { enabled?: boolean }
 ) {
   return useQuery({
-    ...remindersQueryOptions,
     queryKey: ['reminders', 'check', source, id] as const,
-    select: (data) => {
+    queryFn: async (): Promise<Record<string, Reminder>> => {
+      const response = await fetch('/api/reminders');
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch reminders: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data as Record<string, Reminder>;
+    },
+    select: (data: Record<string, Reminder>) => {
       const key = `${source}+${id}`;
       return !!data[key];
     },
+    staleTime: 5 * 60 * 1000, // 5分钟
+    gcTime: 10 * 60 * 1000,   // 10分钟
+    retry: 1,
     enabled: options?.enabled,
   });
 }
