@@ -15,7 +15,8 @@
  * - 自动请求去重：多个组件同时调用只发一次请求
  */
 
-import { useQuery, queryOptions } from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
+
 import type { PlayRecord } from '@/lib/types';
 
 // ============================================================================
@@ -109,16 +110,8 @@ export function usePlayRecordsQuery(options?: { enabled?: boolean }) {
  */
 export function usePlayRecordsArrayQuery(options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: ['playRecords', 'array'] as const,
-    queryFn: async () => {
-      const response = await fetch('/api/playrecords');
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch play records: ${response.status}`);
-      }
-
-      const data = await response.json() as Record<string, PlayRecord>;
-
+    ...playRecordsQueryOptions,
+    select: (data) => {
       // 转换为数组并排序
       const recordsArray = Object.entries(data).map(([key, record]) => ({
         ...record,
@@ -128,9 +121,6 @@ export function usePlayRecordsArrayQuery(options?: { enabled?: boolean }) {
       // 按保存时间降序排序
       return recordsArray.sort((a, b) => b.save_time - a.save_time);
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    retry: 1,
     enabled: options?.enabled,
   });
 }
@@ -154,25 +144,14 @@ export function usePlayRecordsArrayQuery(options?: { enabled?: boolean }) {
 export function usePlayRecordQuery(
   source: string,
   id: string,
-  options?: { enabled?: boolean }
+  options?: { enabled?: boolean },
 ) {
   return useQuery({
-    queryKey: ['playRecords', 'single', source, id] as const,
-    queryFn: async () => {
-      const response = await fetch('/api/playrecords');
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch play records: ${response.status}`);
-      }
-
-      const data = await response.json() as Record<string, PlayRecord>;
+    ...playRecordsQueryOptions,
+    select: (data: Record<string, PlayRecord>) => {
       const key = `${source}+${id}`;
-
       return data[key] || null;
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    retry: 1,
     enabled: options?.enabled,
   });
 }
