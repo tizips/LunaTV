@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient, queryOptions } from '@tanstack/react-query';
 import { checkForUpdates, type UpdateStatus } from '@/lib/version_check';
 import type { PlayRecord } from '@/lib/types';
+import { favoritesQueryOptions } from './useFavoritesQuery';
 
 // ─── Emby Config Types ──────────────────────────────────────────────────────
 
@@ -213,34 +214,21 @@ interface UseFavoritesQueryOptions {
 }
 
 /**
- * Query options for favorites list
- * 使用新的 useFavoritesQuery 作为数据源
+ * Fetch favorites list
+ * 复用基础的 favoritesQueryOptions，使用 select 转换为数组格式
+ * 避免重复请求 /api/favorites
  */
-const favoritesOptions = () => queryOptions({
-  queryKey: ['favorites', 'userMenu'],
-  queryFn: async () => {
-    const response = await fetch('/api/favorites');
-    if (response.ok) {
-      const favoritesData = await response.json() as Record<string, any>;
-      const favoritesArray = Object.entries(favoritesData).map(([key, favorite]) => ({
+export function useFavoritesQuery({ enabled }: UseFavoritesQueryOptions) {
+  return useQuery({
+    ...favoritesQueryOptions,
+    select: (data) => {
+      const favoritesArray = Object.entries(data).map(([key, favorite]) => ({
         ...favorite,
         key,
       }));
       // Sort by save time descending
       return favoritesArray.sort((a, b) => b.save_time - a.save_time);
-    }
-    return [];
-  },
-  staleTime: 2 * 60 * 1000, // 2 minutes
-  gcTime: 10 * 60 * 1000,
-});
-
-/**
- * Fetch favorites list
- */
-export function useFavoritesQuery({ enabled }: UseFavoritesQueryOptions) {
-  return useQuery({
-    ...favoritesOptions(),
+    },
     enabled,
   });
 }

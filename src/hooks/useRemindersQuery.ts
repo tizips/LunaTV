@@ -67,6 +67,8 @@ export function useRemindersQuery(options?: { enabled?: boolean }) {
 
 /**
  * 获取提醒数组（按上映日期排序）
+ * 
+ * 使用 select 从基础查询派生数据，避免重复请求
  *
  * @example
  * ```tsx
@@ -85,16 +87,8 @@ export function useRemindersQuery(options?: { enabled?: boolean }) {
  */
 export function useRemindersArrayQuery(options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: ['reminders', 'array'] as const,
-    queryFn: async () => {
-      const response = await fetch('/api/reminders');
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch reminders: ${response.status}`);
-      }
-
-      const data = await response.json() as Record<string, Reminder>;
-
+    ...remindersQueryOptions,
+    select: (data) => {
       // 转换为数组并排序
       const remindersArray = Object.entries(data).map(([key, reminder]) => ({
         ...reminder,
@@ -108,9 +102,6 @@ export function useRemindersArrayQuery(options?: { enabled?: boolean }) {
         return dateA - dateB;
       });
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    retry: 1,
     enabled: options?.enabled,
   });
 }
@@ -121,6 +112,8 @@ export function useRemindersArrayQuery(options?: { enabled?: boolean }) {
 
 /**
  * 检查是否已设置提醒
+ * 
+ * 使用 select 从基础查询派生数据，避免重复请求
  *
  * @example
  * ```tsx
@@ -141,22 +134,12 @@ export function useIsRemindedQuery(
   options?: { enabled?: boolean }
 ) {
   return useQuery({
+    ...remindersQueryOptions,
     queryKey: ['reminders', 'check', source, id] as const,
-    queryFn: async () => {
-      const response = await fetch('/api/reminders');
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch reminders: ${response.status}`);
-      }
-
-      const data = await response.json() as Record<string, Reminder>;
+    select: (data) => {
       const key = `${source}+${id}`;
-
       return !!data[key];
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    retry: 1,
     enabled: options?.enabled,
   });
 }

@@ -67,6 +67,8 @@ export function useFavoritesQuery(options?: { enabled?: boolean }) {
 
 /**
  * 获取收藏数组（按保存时间降序排序）
+ * 
+ * 使用 select 从基础查询派生数据，避免重复请求
  *
  * @example
  * ```tsx
@@ -85,16 +87,8 @@ export function useFavoritesQuery(options?: { enabled?: boolean }) {
  */
 export function useFavoritesArrayQuery(options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: ['favorites', 'array'] as const,
-    queryFn: async () => {
-      const response = await fetch('/api/favorites');
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch favorites: ${response.status}`);
-      }
-
-      const data = await response.json() as Record<string, Favorite>;
-
+    ...favoritesQueryOptions,
+    select: (data) => {
       // 转换为数组并排序
       const favoritesArray = Object.entries(data).map(([key, favorite]) => ({
         ...favorite,
@@ -104,9 +98,6 @@ export function useFavoritesArrayQuery(options?: { enabled?: boolean }) {
       // 按保存时间降序排序
       return favoritesArray.sort((a, b) => b.save_time - a.save_time);
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    retry: 1,
     enabled: options?.enabled,
   });
 }
@@ -117,6 +108,8 @@ export function useFavoritesArrayQuery(options?: { enabled?: boolean }) {
 
 /**
  * 检查是否已收藏
+ * 
+ * 使用 select 从基础查询派生数据，避免重复请求
  *
  * @example
  * ```tsx
@@ -137,22 +130,12 @@ export function useIsFavoritedQuery(
   options?: { enabled?: boolean }
 ) {
   return useQuery({
+    ...favoritesQueryOptions,
     queryKey: ['favorites', 'check', source, id] as const,
-    queryFn: async () => {
-      const response = await fetch('/api/favorites');
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch favorites: ${response.status}`);
-      }
-
-      const data = await response.json() as Record<string, Favorite>;
+    select: (data) => {
       const key = `${source}+${id}`;
-
       return !!data[key];
     },
-    staleTime: 5 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    retry: 1,
     enabled: options?.enabled,
   });
 }
