@@ -1,5 +1,7 @@
 'use client';
 
+// BRANCH-PROTECTED: preserve this file's logic in future merges unless the owner approves changes.
+
 /**
  * 提醒查询的 TanStack Query Hook
  *

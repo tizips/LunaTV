@@ -1,6 +1,8 @@
 import { lookup } from 'dns/promises';
 import { isIP } from 'net';
 
+// BRANCH-PROTECTED: preserve this file's logic in future merges unless the owner approves changes.
+
 export function normalizeHeaderUrl(
   value: string | null | undefined,
 ): string | undefined {

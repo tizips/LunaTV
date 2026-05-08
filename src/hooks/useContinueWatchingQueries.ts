@@ -3,6 +3,8 @@ import { queryOptions, useQuery } from '@tanstack/react-query';
 import { playRecordsQueryOptions } from './usePlayRecordsQuery';
 import { useWatchingUpdatesQuery as useWatchingUpdates } from './useWatchingUpdates';
 
+// BRANCH-PROTECTED: preserve this file's logic in future merges unless the owner approves changes.
+
 /**
  * Query options for continue watching records
  */

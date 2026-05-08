@@ -1,5 +1,7 @@
 'use client';
 
+// BRANCH-PROTECTED: preserve this file's logic in future merges unless the owner approves changes.
+
 /**
  * 播放记录查询的 TanStack Query Hook
  *

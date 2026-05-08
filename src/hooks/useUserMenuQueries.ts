@@ -10,6 +10,8 @@ import { checkForUpdates, type UpdateStatus } from '@/lib/version_check';
 import { favoritesQueryOptions } from './useFavoritesQuery';
 import { playRecordsQueryOptions } from './usePlayRecordsQuery';
 
+// BRANCH-PROTECTED: preserve this file's logic in future merges unless the owner approves changes.
+
 // ─── Emby Config Types ──────────────────────────────────────────────────────
 
 export interface EmbySource {

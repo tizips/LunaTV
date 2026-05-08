@@ -1,6 +1,8 @@
 /* eslint-disable no-console */
 'use client';
 
+// BRANCH-PROTECTED: preserve this file's logic in future merges unless the owner approves changes.
+
 /**
  * 追番更新检查的 TanStack Query Hook
  *
