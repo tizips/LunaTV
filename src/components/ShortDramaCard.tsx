@@ -73,7 +73,7 @@ function ShortDramaCard({
 
   // 同步 Query 结果到本地 state
   useEffect(() => {
-    if (favoritedStatus !== undefined) {
+    if (typeof favoritedStatus === 'boolean') {
       setFavorited(favoritedStatus);
     }
   }, [favoritedStatus]);
