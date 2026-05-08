@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getAuthInfoFromCookie } from '@/lib/auth';
+import { getEnv, getPassword, getStorageType, getUsername, hasPassword, isProduction } from '@/lib/env';
 
 // 信任网络配置缓存（从 API 获取）
 let trustedNetworkCache: { enabled: boolean; trustedIPs: string[] } | null = null;
@@ -14,7 +15,7 @@ const CACHE_TTL = 86400000; // 24 小时缓存（配置变化时通过 cookie �
 
 // 从环境变量获取信任网络配置（优先）
 function getTrustedNetworkFromEnv(): { enabled: boolean; trustedIPs: string[] } | null {
-  const trustedIPs = process.env.TRUSTED_NETWORK_IPS;
+  const trustedIPs = getEnv('TRUSTED_NETWORK_IPS');
   if (!trustedIPs) return null;
 
   return {
@@ -174,18 +175,18 @@ function isIPTrusted(clientIP: string, trustedIPs: string[]): boolean {
 function generateTrustedAuthCookie(request: NextRequest): NextResponse {
   const response = NextResponse.next();
 
-  const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
-  const username = process.env.USERNAME || 'admin';
+  const storageType = getStorageType();
+  const username = getUsername();
 
   if (storageType === 'localstorage') {
     // localstorage 模式：设置密码 cookie
     const authInfo = {
-      password: process.env.PASSWORD,
+      password: getPassword(),
       loginTime: Date.now(),
     };
     response.cookies.set('user_auth', JSON.stringify(authInfo), {
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction(),
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60, // 7 天
     });
@@ -201,7 +202,7 @@ function generateTrustedAuthCookie(request: NextRequest): NextResponse {
     };
     response.cookies.set('user_auth', JSON.stringify(authInfo), {
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction(),
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60, // 7 天
     });
@@ -276,9 +277,9 @@ async function handleAuthentication(
     }
   }
 
-  const storageType = process.env.NEXT_PUBLIC_STORAGE_TYPE || 'localstorage';
+  const storageType = getStorageType();
 
-  if (!process.env.PASSWORD) {
+  if (!hasPassword()) {
     // 如果没有设置密码，重定向到警告页面
     const warningUrl = new URL('/warning', request.url);
     return NextResponse.redirect(warningUrl);
@@ -293,7 +294,7 @@ async function handleAuthentication(
 
   // localstorage模式：在middleware中完成验证
   if (storageType === 'localstorage') {
-    if (!authInfo.password || authInfo.password !== process.env.PASSWORD) {
+    if (!authInfo.password || authInfo.password !== getPassword()) {
       return handleAuthFailure(request, pathname);
     }
     return response || NextResponse.next();
@@ -315,7 +316,7 @@ async function handleAuthentication(
     const isValidSignature = await verifySignature(
       authInfo.username,
       authInfo.signature,
-      process.env.PASSWORD || ''
+      getPassword()
     );
 
     // 签名验证通过即可
