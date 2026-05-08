@@ -23,6 +23,7 @@ import AcgSearch from '@/components/AcgSearch';
 import PageLayout from '@/components/PageLayout';
 import SkipController, { SkipSettingsButton } from '@/components/SkipController';
 import VideoCard from '@/components/VideoCard';
+import WordRecommendationSection from '@/components/WordRecommendationSection';
 import CommentSection from '@/components/play/CommentSection';
 import DownloadButtons from '@/components/play/DownloadButtons';
 import FavoriteButton from '@/components/play/FavoriteButton';
@@ -6256,6 +6257,9 @@ function PlayPageClient() {
             videoDoubanId={videoDoubanId}
             processImageUrl={processImageUrl}
           />
+
+          {/* 分词推荐 */}
+          <WordRecommendationSection title={videoTitle} />
         </div>
       </div>
 

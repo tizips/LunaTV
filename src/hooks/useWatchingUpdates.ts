@@ -580,7 +580,7 @@ export function useWatchingUpdatesQuery(options?: {
       return undefined;
     },
     // 只在启用时执行
-    enabled: options?.enabled,
+    enabled: options?.enabled !== false,
     // 不自动重试，避免过多请求
     retry: false,
   });
