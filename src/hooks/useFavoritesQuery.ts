@@ -9,7 +9,8 @@
  * - 替代 db.client.ts 的 getAllFavorites() 直接 fetch
  */
 
-import { useQuery, queryOptions } from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
+
 import type { Favorite } from '@/lib/types';
 
 // ============================================================================
@@ -32,7 +33,7 @@ export const favoritesQueryOptions = queryOptions({
     return data as Record<string, Favorite>;
   },
   staleTime: 5 * 60 * 1000, // 5分钟
-  gcTime: 10 * 60 * 1000,   // 10分钟
+  gcTime: 10 * 60 * 1000, // 10分钟
   retry: 1,
 });
 
@@ -67,7 +68,7 @@ export function useFavoritesQuery(options?: { enabled?: boolean }) {
 
 /**
  * 获取收藏数组（按保存时间降序排序）
- * 
+ *
  * 使用 select 从基础查询派生数据，避免重复请求
  *
  * @example
@@ -108,7 +109,7 @@ export function useFavoritesArrayQuery(options?: { enabled?: boolean }) {
 
 /**
  * 检查是否已收藏
- * 
+ *
  * 使用 select 从基础查询派生数据，避免重复请求
  *
  * @example
@@ -127,27 +128,14 @@ export function useFavoritesArrayQuery(options?: { enabled?: boolean }) {
 export function useIsFavoritedQuery(
   source: string,
   id: string,
-  options?: { enabled?: boolean }
+  options?: { enabled?: boolean },
 ) {
   return useQuery({
-    queryKey: ['favorites', 'check', source, id] as const,
-    queryFn: async (): Promise<Record<string, Favorite>> => {
-      const response = await fetch('/api/favorites');
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch favorites: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data as Record<string, Favorite>;
-    },
+    ...favoritesQueryOptions,
     select: (data: Record<string, Favorite>) => {
       const key = `${source}+${id}`;
       return !!data[key];
     },
-    staleTime: 5 * 60 * 1000, // 5分钟
-    gcTime: 10 * 60 * 1000,   // 10分钟
-    retry: 1,
     enabled: options?.enabled,
   });
 }

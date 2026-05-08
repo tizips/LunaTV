@@ -9,7 +9,8 @@
  * - 替代 db.client.ts 的 getAllReminders() 直接 fetch
  */
 
-import { useQuery, queryOptions } from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
+
 import type { Reminder } from '@/lib/db.client';
 
 // ============================================================================
@@ -32,7 +33,7 @@ export const remindersQueryOptions = queryOptions({
     return data as Record<string, Reminder>;
   },
   staleTime: 5 * 60 * 1000, // 5分钟
-  gcTime: 10 * 60 * 1000,   // 10分钟
+  gcTime: 10 * 60 * 1000, // 10分钟
   retry: 1,
 });
 
@@ -67,7 +68,7 @@ export function useRemindersQuery(options?: { enabled?: boolean }) {
 
 /**
  * 获取提醒数组（按上映日期排序）
- * 
+ *
  * 使用 select 从基础查询派生数据，避免重复请求
  *
  * @example
@@ -112,7 +113,7 @@ export function useRemindersArrayQuery(options?: { enabled?: boolean }) {
 
 /**
  * 检查是否已设置提醒
- * 
+ *
  * 使用 select 从基础查询派生数据，避免重复请求
  *
  * @example
@@ -131,27 +132,14 @@ export function useRemindersArrayQuery(options?: { enabled?: boolean }) {
 export function useIsRemindedQuery(
   source: string,
   id: string,
-  options?: { enabled?: boolean }
+  options?: { enabled?: boolean },
 ) {
   return useQuery({
-    queryKey: ['reminders', 'check', source, id] as const,
-    queryFn: async (): Promise<Record<string, Reminder>> => {
-      const response = await fetch('/api/reminders');
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch reminders: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data as Record<string, Reminder>;
-    },
+    ...remindersQueryOptions,
     select: (data: Record<string, Reminder>) => {
       const key = `${source}+${id}`;
       return !!data[key];
     },
-    staleTime: 5 * 60 * 1000, // 5分钟
-    gcTime: 10 * 60 * 1000,   // 10分钟
-    retry: 1,
     enabled: options?.enabled,
   });
 }
