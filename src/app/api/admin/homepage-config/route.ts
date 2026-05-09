@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { db } from '@/lib/db';
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
       showHotShortDramas,
     } = body;
 
-    const config = await getConfig();
+    const config = (await db.getAdminConfig()) ?? (await getConfig());
 
     config.HomePageConfig = {
       showHeroBanner: showHeroBanner ?? true,
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
 
     await db.saveAdminConfig(config);
     clearConfigCache();
+    revalidatePath('/', 'layout');
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any,no-console */
 
+import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getAuthInfoFromCookie } from '@/lib/auth';
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 获取配置与存储
-    const adminConfig = await getConfig();
+    const adminConfig = (await db.getAdminConfig()) ?? (await getConfig());
 
     // 权限与身份校验
     if (username !== process.env.USERNAME) {
@@ -338,6 +339,7 @@ export async function POST(request: NextRequest) {
     
     // 清除配置缓存，强制下次重新从数据库读取
     clearConfigCache();
+    revalidatePath('/', 'layout');
 
     return NextResponse.json(
       { ok: true },
