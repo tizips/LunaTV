@@ -3,6 +3,7 @@ export {};
 const saveAdminConfigMock = jest.fn();
 const getAdminConfigMock = jest.fn();
 const getConfigMock = jest.fn();
+const getAuthInfoFromCookieMock = jest.fn(() => ({ username: 'owner' }));
 
 jest.mock('@/lib/db', () => ({
   db: {
@@ -17,7 +18,7 @@ jest.mock('@/lib/config', () => ({
 }));
 
 jest.mock('@/lib/auth', () => ({
-  getAuthInfoFromCookie: jest.fn(() => ({ username: 'owner' })),
+  getAuthInfoFromCookie: (...args: unknown[]) => getAuthInfoFromCookieMock(...args),
 }));
 
 jest.mock('next/server', () => ({
@@ -49,6 +50,7 @@ describe('/api/admin/source', () => {
     jest.clearAllMocks();
     process.env.NEXT_PUBLIC_STORAGE_TYPE = 'redis';
     process.env.USERNAME = 'owner';
+    getAuthInfoFromCookieMock.mockReturnValue({ username: 'owner' });
   });
 
   afterEach(() => {
@@ -92,5 +94,24 @@ describe('/api/admin/source', () => {
         ],
       }),
     );
+  });
+
+  it('rejects unauthorized requests before reading the body', async () => {
+    getAuthInfoFromCookieMock.mockReturnValueOnce(null);
+
+    const request = {
+      json: jest.fn(() => {
+        throw new Error('body should not be read');
+      }),
+      cookies: {
+        get: jest.fn(),
+      },
+    } as any;
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(401);
+    expect(request.json).not.toHaveBeenCalled();
+    expect(saveAdminConfigMock).not.toHaveBeenCalled();
   });
 });

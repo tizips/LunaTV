@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any,no-console */
+/* eslint-disable no-console */
 
 import { revalidatePath } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
@@ -28,14 +28,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = (await request.json()) as BaseBody & Record<string, any>;
-    const { action } = body;
-
     const authInfo = getAuthInfoFromCookie(request);
     if (!authInfo || !authInfo.username) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const username = authInfo.username;
+
+    const body = (await request.json()) as BaseBody & Record<string, any>;
+    const { action } = body;
 
     // 基础校验
     const ACTIONS: Action[] = ['add', 'update', 'disable', 'enable', 'delete', 'sort', 'batch_disable', 'batch_enable', 'batch_delete', 'update_adult', 'batch_mark_adult', 'batch_unmark_adult', 'batch_mark_shortdrama', 'batch_mark_vod', 'update_weight'];
