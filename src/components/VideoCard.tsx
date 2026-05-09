@@ -975,101 +975,297 @@ const VideoCard = forwardRef<VideoCardHandle, VideoCardProps>(
                 WebkitUserSelect: 'none',
                 userSelect: 'none',
                 WebkitTouchCallout: 'none',
-              } as React.CSSProperties
-            }
-            onContextMenu={(e) => {
-              e.preventDefault();
-              return false;
-            }}
-          >
-            {/* 渐变光泽动画层 */}
+              } as React.CSSProperties}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                return false;
+              }}
+            >
+            {/* 播放按钮 / 即将上映提示 */}
+            {config.showPlayButton && (
+              <div
+                data-button='true'
+                className='absolute inset-0 flex items-center justify-center opacity-0 transition-all duration-300 ease-in-out delay-75 group-hover:opacity-100 group-hover:scale-100'
+                style={
+                  {
+                    WebkitUserSelect: 'none',
+                    userSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                  } as React.CSSProperties
+                }
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  return false;
+                }}
+              >
+              {isUpcoming ? (
+                // 即将上映 - 显示敬请期待
+                <div className='flex flex-col items-center gap-2 bg-black/60 backdrop-blur-md px-6 py-4 rounded-xl'>
+                  <span className='text-3xl'>📅</span>
+                  <span className='text-white font-bold text-sm whitespace-nowrap'>敬请期待</span>
+                </div>
+              ) : (
+                // 正常内容 - 显示播放按钮
+                <PlayCircleIcon
+                  size={50}
+                  strokeWidth={1.5}
+                  className='text-white fill-transparent transition-all duration-300 ease-out hover:text-green-500 hover:scale-[1.15] drop-shadow-[0_0_8px_rgba(34,197,94,0.6)]'
+                  style={{
+                    WebkitUserSelect: 'none',
+                    userSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                  } as React.CSSProperties}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    return false;
+                  }}
+                />
+              )}
+            </div>
+          )}
+
+          {/* 操作按钮 - hover显示（非收藏页面） */}
+          {(config.showHeart || config.showCheckCircle) && from !== 'favorite' && (
             <div
-              className='absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10'
+              data-button="true"
+              className='absolute bottom-3 right-3 flex gap-3 opacity-0 translate-y-2 transition-all duration-300 ease-in-out sm:group-hover:opacity-100 sm:group-hover:translate-y-0'
               style={{
-                background:
-                  'linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.15) 45%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0.15) 55%, transparent 70%)',
-                backgroundSize: '200% 100%',
-                animation: 'card-shimmer 2.5s ease-in-out infinite',
-              }}
-            />
-
-            {/* 骨架屏 */}
-            {!isLoading && <ImagePlaceholder aspectRatio='aspect-[2/3]' />}
-            {/* 图片 */}
-            <Image
-              src={processImageUrl(actualPoster)}
-              alt={actualTitle}
-              fill
-              sizes='(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, 16vw'
-              className={`${origin === 'live' ? 'object-contain' : 'object-cover'} transition-opacity duration-300 ease-out ${
-                imageLoaded ? 'opacity-100' : 'opacity-0'
-              }`}
-              referrerPolicy='no-referrer'
-              loading={priority ? undefined : 'lazy'}
-              priority={priority}
-              quality={75}
-              onLoad={() => {
-                loadedImageUrls.add(processImageUrl(actualPoster));
-                if (!imageLoaded) {
-                  setIsLoading(true);
-                  setImageLoaded(true);
-                }
-              }}
-              onError={(e) => {
-                // 图片加载失败时的处理
-                const img = e.target as HTMLImageElement;
-                if (origin === 'live') {
-                  // 直播频道使用默认图标，不重试避免闪烁
-                  img.src =
-                    'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300"%3E%3Crect fill="%23374151" width="200" height="300"/%3E%3Cg fill="%239CA3AF"%3E%3Ccircle cx="100" cy="120" r="30"/%3E%3Cpath d="M60 160 Q60 140 80 140 L120 140 Q140 140 140 160 L140 200 Q140 220 120 220 L80 220 Q60 220 60 200 Z"/%3E%3C/g%3E%3Ctext x="100" y="260" font-family="Arial" font-size="14" fill="%239CA3AF" text-anchor="middle"%3E直播频道%3C/text%3E%3C/svg%3E';
-                  setImageLoaded(true);
-                } else if (!img.dataset.retried) {
-                  // 非直播内容重试一次
-                  img.dataset.retried = 'true';
-                  setTimeout(() => {
-                    img.src = processImageUrl(actualPoster);
-                  }, 2000);
-                } else {
-                  // 重试失败，使用通用占位图
-                  img.src =
-                    'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="300" viewBox="0 0 200 300"%3E%3Crect fill="%23374151" width="200" height="300"/%3E%3Cg fill="%239CA3AF"%3E%3Cpath d="M100 80 L100 120 M80 100 L120 100" stroke="%239CA3AF" stroke-width="8" stroke-linecap="round"/%3E%3Crect x="60" y="140" width="80" height="100" rx="5" fill="none" stroke="%239CA3AF" stroke-width="4"/%3E%3Cpath d="M70 160 L90 180 L130 140" stroke="%239CA3AF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/%3E%3C/g%3E%3Ctext x="100" y="270" font-family="Arial" font-size="12" fill="%239CA3AF" text-anchor="middle"%3E暂无海报%3C/text%3E%3C/svg%3E';
-                  setImageLoaded(true);
-                }
-              }}
-              style={
-                {
-                  // 禁用图片的默认长按效果
-                  WebkitUserSelect: 'none',
-                  userSelect: 'none',
-                  WebkitTouchCallout: 'none',
-                  pointerEvents: 'none', // 图片不响应任何指针事件
-                } as React.CSSProperties
-              }
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+                WebkitTouchCallout: 'none',
+              } as React.CSSProperties}
               onContextMenu={(e) => {
                 e.preventDefault();
                 return false;
               }}
-              onDragStart={(e) => {
-                e.preventDefault();
-                return false;
-              }}
-            />
+            >
+              {config.showCheckCircle && (
+                <Trash2
+                  onClick={handleDeleteRecord}
+                  size={20}
+                  className='text-white transition-all duration-300 ease-out hover:stroke-red-500 hover:scale-[1.1]'
+                  style={{
+                    WebkitUserSelect: 'none',
+                    userSelect: 'none',
+                    WebkitTouchCallout: 'none',
+                  } as React.CSSProperties}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    return false;
+                  }}
+                />
+              )}
+              {config.showHeart && (
+                <>
+                  {(() => {
+                    // 🔥 修复：如果是"新上映"的内容（remarks包含"已上映"或"今日上映"），显示Bell图标
+                    const isNewRelease = remarks && (remarks.includes('已上映') || remarks.includes('今日上映'));
+                    const shouldShowBell = isUpcoming || isNewRelease;
 
-            {/* 悬浮遮罩 - 玻璃态效果 */}
+                    if (shouldShowBell) {
+                      // 即将上映或新上映：显示铃铛图标（使用 reminded 状态）
+                      return optimisticReminded ? (
+                        <BellRing
+                          onClick={handleToggleFavorite}
+                          size={20}
+                          className="fill-orange-600 stroke-orange-600 transition-all duration-300 ease-out hover:scale-[1.1]"
+                          style={{
+                            WebkitUserSelect: 'none',
+                            userSelect: 'none',
+                            WebkitTouchCallout: 'none',
+                          } as React.CSSProperties}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            return false;
+                          }}
+                        />
+                      ) : (
+                        <Bell
+                          onClick={handleToggleFavorite}
+                          size={20}
+                          className="fill-transparent stroke-white hover:stroke-orange-400 transition-all duration-300 ease-out hover:scale-[1.1]"
+                          style={{
+                            WebkitUserSelect: 'none',
+                            userSelect: 'none',
+                            WebkitTouchCallout: 'none',
+                          } as React.CSSProperties}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            return false;
+                          }}
+                        />
+                      );
+                    } else {
+                      // 已上映：显示爱心图标（使用 favorited 状态）
+                      return (
+                        <Heart
+                          onClick={handleToggleFavorite}
+                          size={20}
+                          className={`transition-all duration-300 ease-out ${(from === 'search' ? optimisticSearchFavorited : optimisticFavorited)
+                            ? 'fill-red-600 stroke-red-600'
+                            : 'fill-transparent stroke-white hover:stroke-red-400'
+                            } hover:scale-[1.1]`}
+                          style={{
+                            WebkitUserSelect: 'none',
+                            userSelect: 'none',
+                            WebkitTouchCallout: 'none',
+                          } as React.CSSProperties}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            return false;
+                          }}
+                        />
+                      );
+                    }
+                  })()}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* 收藏页面专用：固定显示的爱心/铃铛按钮 */}
+          {from === 'favorite' && config.showHeart && (
             <div
-              className='absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent transition-all duration-300 ease-in-out opacity-0 group-hover:opacity-100 backdrop-blur-[2px]'
-              style={
-                {
-                  WebkitUserSelect: 'none',
-                  userSelect: 'none',
-                  WebkitTouchCallout: 'none',
-                } as React.CSSProperties
-              }
+              className='absolute bottom-2 right-2 z-30'
+              onClick={handleToggleFavorite}
+              style={{
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+                WebkitTouchCallout: 'none',
+                cursor: 'pointer',
+              } as React.CSSProperties}
               onContextMenu={(e) => {
                 e.preventDefault();
                 return false;
               }}
-            />
+            >
+              {(() => {
+                // 🔥 修复：检查是否是"新上映"的内容
+                const isNewRelease = remarks && (remarks.includes('已上映') || remarks.includes('今日上映'));
+                const shouldShowBell = isUpcoming || isNewRelease;
+
+                return shouldShowBell ? (
+                  <BellRing
+                    size={16}
+                    className='fill-orange-500 stroke-orange-500 transition-all duration-300 hover:scale-110 hover:fill-orange-600 hover:stroke-orange-600'
+                  />
+                ) : (
+                  <Heart
+                    size={16}
+                    className='fill-red-500 stroke-red-500 transition-all duration-300 hover:scale-110 hover:fill-red-600 hover:stroke-red-600'
+                  />
+                );
+              })()}
+            </div>
+          )}
+
+          {/* 集数角标 - Netflix/DecoTV 风格 - 左上角 */}
+          {/* 即将上映的内容不显示集数徽章（因为是占位符数据）*/}
+          {/* 收藏页面：过滤掉99集的占位符显示，只显示真实集数 */}
+          {actualEpisodes && actualEpisodes > 1 && !isUpcoming && !(from === 'favorite' && actualEpisodes === 99) && (
+            <div
+              className='absolute top-2 left-2 flex items-stretch overflow-hidden rounded-md shadow-lg transition-all duration-300 ease-out group-hover:scale-105 z-30'
+              style={{
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+                WebkitTouchCallout: 'none',
+              } as React.CSSProperties}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                return false;
+              }}
+            >
+              {currentEpisode ? (
+                <>
+                  {/* 左侧：当前集 - 品牌色背景（红色） */}
+                  <span className='flex items-center bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white'>
+                    EP {String(currentEpisode).padStart(2, '0')}
+                  </span>
+                  {/* 右侧：总集数 - 半透明黑背景 */}
+                  <span className='flex items-center bg-black/70 backdrop-blur-sm px-1.5 py-0.5 text-[10px] font-medium text-white/60'>
+                    / {actualEpisodes}
+                  </span>
+                </>
+              ) : (
+                /* 仅显示总集数 */
+                <span className='flex items-center bg-black/70 backdrop-blur-sm px-2 py-0.5 text-[10px] font-medium text-white/80'>
+                  {actualEpisodes} 集
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* 年份徽章 - Netflix 风格 - 左上角第二位 */}
+          {config.showYear && actualYear && actualYear !== 'unknown' && actualYear.trim() !== '' && (
+            <div
+              className={`absolute left-2 flex items-center bg-black/70 backdrop-blur-sm px-2 py-0.5 rounded-md shadow-lg text-white/80 text-[10px] font-medium transition-all duration-300 ease-out group-hover:scale-105 z-30 ${
+                actualEpisodes && actualEpisodes > 1 && !isUpcoming && !(from === 'favorite' && actualEpisodes === 99)
+                  ? 'top-[38px]'  // 有集数徽章时向下偏移
+                  : 'top-2'
+              }`}
+              style={{
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+                WebkitTouchCallout: 'none',
+              } as React.CSSProperties}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                return false;
+              }}
+            >
+              {actualYear}
+            </div>
+          )}
+
+          {/* 已完结徽章 - Netflix 风格 - 底部左侧 */}
+          {remarks && isSeriesCompleted(remarks) && (
+            <div
+              className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/70 backdrop-blur-sm px-2 py-0.5 rounded-md shadow-lg text-white/80 text-[10px] font-medium transition-all duration-300 ease-out group-hover:scale-105 z-30"
+              style={{
+                WebkitUserSelect: 'none',
+                userSelect: 'none',
+                WebkitTouchCallout: 'none',
+              } as React.CSSProperties}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                return false;
+              }}
+            >
+              <span className="text-green-400">✓</span>
+              <span>已完结</span>
+            </div>
+          )}
+
+          {/* 上映状态徽章 - Netflix 风格 - 底部左侧 */}
+          {hasReleaseTag && (() => {
+            // 根据状态选择颜色和文本
+            let statusColor = 'text-orange-400';
+            let statusText = remarks || '';
+
+            if (remarks?.includes('已上映')) {
+              statusColor = 'text-green-400';
+            } else if (remarks?.includes('今日上映')) {
+              statusColor = 'text-yellow-400';
+            }
+
+            return (
+              <div
+                className="absolute bottom-2 left-2 flex items-center gap-1 bg-black/70 backdrop-blur-sm px-2 py-0.5 rounded-md shadow-lg text-[10px] font-medium transition-all duration-300 ease-out group-hover:scale-105 z-30"
+                style={{
+                  WebkitUserSelect: 'none',
+                  userSelect: 'none',
+                  WebkitTouchCallout: 'none',
+                } as React.CSSProperties}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  return false;
+                }}
+              >
+                <span className={statusColor}>●</span>
+                <span className="text-white/80">{statusText}</span>
+              </div>
+            );
+          })()}
 
             {/* 播放按钮 / 即将上映提示 */}
             {config.showPlayButton && (

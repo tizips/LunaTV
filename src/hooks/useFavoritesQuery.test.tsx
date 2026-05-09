@@ -4,6 +4,7 @@ import React from 'react';
 
 import { useIsFavoritedQuery } from './useFavoritesQuery';
 import { useIsRemindedQuery } from './useRemindersQuery';
+import { useFavoritesQuery as useUserMenuFavoritesQuery } from './useUserMenuQueries';
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -76,5 +77,37 @@ describe('status queries', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith('/api/reminders');
+  });
+
+  it('shares /api/favorites between the menu list and status queries', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        'douban+1': {
+          title: 'A',
+          save_time: 1,
+        },
+      }),
+    });
+
+    global.fetch = fetchMock as typeof fetch;
+
+    const wrapper = createWrapper();
+
+    const menuQuery = renderHook(
+      () => useUserMenuFavoritesQuery({ enabled: true }),
+      { wrapper },
+    );
+    const statusQuery = renderHook(() => useIsFavoritedQuery('douban', '1'), {
+      wrapper,
+    });
+
+    await waitFor(() => {
+      expect(menuQuery.result.current.isSuccess).toBe(true);
+      expect(statusQuery.result.current.isSuccess).toBe(true);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('/api/favorites');
   });
 });

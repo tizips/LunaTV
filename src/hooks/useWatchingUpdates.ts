@@ -73,6 +73,7 @@ async function getOriginalEpisodes(
   record: PlayRecord & { key: string },
   videoId: string,
   recordKey: string,
+  freshRecords?: Record<string, PlayRecord>,
 ): Promise<number> {
   // 添加详细调试信息
   console.log(`🔍 getOriginalEpisodes 调试信息 - ${record.title}:`, {
@@ -82,27 +83,14 @@ async function getOriginalEpisodes(
     完整记录: record,
   });
 
-  // 🔑 关键修复：不信任内存中的 original_episodes（可能来自缓存）
-  // 始终从数据库重新读取最新的 original_episodes
-  try {
-    console.log(`🔍 从数据库读取最新的原始集数: ${record.title}`);
-    const freshRecordsResponse = await fetch('/api/playrecords');
-    if (freshRecordsResponse.ok) {
-      const freshRecords = await freshRecordsResponse.json();
-      const freshRecord = freshRecords[recordKey];
-
-      if (freshRecord?.original_episodes && freshRecord.original_episodes > 0) {
-        console.log(
-          `📚 从数据库读取到最新原始集数: ${record.title} = ${freshRecord.original_episodes}集 (当前播放记录: ${record.total_episodes}集)`,
-        );
-        return freshRecord.original_episodes;
-      }
-    }
-  } catch (error) {
-    console.warn(
-      `⚠️ 从数据库读取原始集数失败: ${record.title}，使用内存值`,
-      error,
+  // 🔑 关键修复：复用 queryClient.ensureQueryData 拉取到的最新播放记录
+  // 避免再次 fetch('/api/playrecords') 造成重复请求
+  const freshRecord = freshRecords?.[recordKey];
+  if (freshRecord?.original_episodes && freshRecord.original_episodes > 0) {
+    console.log(
+      `📚 从最新播放记录读取原始集数: ${record.title} = ${freshRecord.original_episodes}集 (当前播放记录: ${record.total_episodes}集)`,
     );
+    return freshRecord.original_episodes;
   }
 
   // 备用方案：如果数据库读取失败，使用内存中的值
@@ -140,6 +128,7 @@ async function checkSingleRecordUpdate(
   record: PlayRecord & { key: string },
   videoId: string,
   sourceKey: string,
+  freshRecords?: Record<string, PlayRecord>,
 ): Promise<{
   hasUpdate: boolean;
   hasNewEpisode: boolean;
@@ -193,6 +182,7 @@ async function checkSingleRecordUpdate(
       record,
       videoId,
       recordKey,
+      freshRecords,
     );
 
     console.log(`📊 [追番更新] ${record.title} 集数对比:`, {
@@ -408,6 +398,7 @@ export function useWatchingUpdatesQuery(options?: {
                 record,
                 videoId,
                 sourceKey,
+                playRecords,
               );
 
               // 使用从 checkSingleRecordUpdate 返回的 protectedTotalEpisodes（已经包含了保护机制）
